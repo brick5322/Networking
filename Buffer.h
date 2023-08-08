@@ -2,12 +2,16 @@
 #include <stdint.h>
 #include <stddef.h>
 
-namespace Networking
+namespace bric::Networking
 {
     struct Buffer {
         uint8_t* data;
         size_t size;
 
-        operator std::string();
-    }
-} 
+        Buffer(uint8_t* data,size_t size):data(data),size(size){}
+
+        operator std::string(){
+            return std::string((char*)data,size);
+        }
+    };
+}

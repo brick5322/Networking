@@ -1,3 +1,4 @@
+#pragma once
 #include <stdint.h>
 #include <stddef.h>
 
@@ -7,7 +8,17 @@
 #include "../Buffer.h"
 
 namespace bric::Networking::DHCP {
-	enum class MessageType {
+	class MessageData;
+
+	static uint32_t magicCookie = 0x63538263;
+
+	enum class opType : uint8_t {
+		Request = 1,
+		Reply = 2
+	};
+
+	enum class MessageType : uint8_t {
+		unknown = 0,
 		discover = 1,
 		offer = 2,
 		request = 3,
@@ -18,7 +29,7 @@ namespace bric::Networking::DHCP {
 		inform = 8,
 	};
 
-	enum class OptionType {
+	enum class OptionType : uint8_t {
 		pad = 0,
 		subnetMask = 1,
 		hostName = 12,
@@ -30,9 +41,8 @@ namespace bric::Networking::DHCP {
 		end = 255,
 	};
 
-	struct fixed_msg 
-	{
-		uint8_t op;
+	struct Header {
+		opType op;
 		uint8_t htype;
 		uint8_t hlen;
 		uint8_t hops;
@@ -46,25 +56,25 @@ namespace bric::Networking::DHCP {
 		uint8_t chaddr[16];
 		uint8_t sname[64];
 		uint8_t file[128];
-		uint8_t magicCookie[4];
-	} DHCPMessageDef;
-
-	struct msgdef :public fixed_msg 
-	{
-		uint8_t options[];
+		uint32_t magicCookie;
 	};
 
 	class Message {
 	    private:
-	        msgdef *msg;
-	        size_t datalen;
-			std::map<OptionType,std::vector<uint8_t>> option;
+			typedef MessageData Data;
+			Data* d;
 
 	    public:
-	        Message();
+	        Message() noexcept;
 	        Message(const uint8_t* data,size_t datalen);
 			Message(const Buffer& buffer);
+
+			~Message();
+
+			operator bool();
+
 			void loadData(const uint8_t* data,size_t datalen);
 			void loadData(const Buffer& buffer);
+
 	};
-}	
+} // namespace bric::Networking::DHCP
