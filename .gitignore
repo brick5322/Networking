@@ -1,6 +1,8 @@
 .vs/
 Debug/
 Release/
+x64/
+bin/
 
 .DS_Store/
 .vscode/

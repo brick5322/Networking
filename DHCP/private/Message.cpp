@@ -10,25 +10,37 @@ class OptionIterator {
     private:
         uint8_t* optionStart;
         uint8_t* current;
+        OptionType type;
     public:
-        OptionIterator(uint8_t* start,uint8_t* current) 
-            :optionStart(start),current(current){}
+        OptionIterator(uint8_t* start,uint8_t* current,OptionType optType = OptionType::pad) 
+            :optionStart(start),current(current),type(optType){}
 
         OptionIterator& operator++() {
             Option* current = reinterpret_cast<Option*>(this->current);
             if (current->type == OptionType::pad)
                 this->current++;
+            else if (current->type == OptionType::end)
+                type = OptionType::end;
+            else
+                this->current += sizeof(Option) + current->length;
             return *this;
         }
 
         bool operator!=(const OptionIterator& val) {
-            return current != val.current;
+            return current != val.current && optType() != val.optType();
         }
 
         Option& operator*(){
             Option* current = reinterpret_cast<Option*>(this->current);
             return *current;
         } 
+
+        OptionType optType() const{
+            if (type == OptionType::pad)
+                return reinterpret_cast<Option*>(this->current)->type;
+            else
+                return type;
+        }
 };
 
 class Options {
@@ -43,7 +55,7 @@ class Options {
         }
 
         inline OptionIterator end() {
-            return OptionIterator(option,option);
+            return OptionIterator(option, option + length, OptionType::end);
         }
 };
 
