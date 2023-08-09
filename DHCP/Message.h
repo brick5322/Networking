@@ -32,7 +32,7 @@ namespace bric::Networking::DHCP {
 	enum class OptionType : uint8_t {
 		pad = 0,
 		subnetMask = 1,
-		router = 3,
+		gateway = 3,
 		domainNameServer = 6,
 		hostName = 12,
 		domainName = 15,
@@ -82,6 +82,8 @@ namespace bric::Networking::DHCP {
 	        Message() noexcept;
 	        Message(const uint8_t* data,size_t datalen);
 			Message(const Buffer& buffer);
+			Message(const Message&);
+			Message(Message&&);
 
 			~Message();
 
@@ -89,6 +91,8 @@ namespace bric::Networking::DHCP {
 
 			void loadData(const uint8_t* data,size_t datalen);
 			void loadData(const Buffer& buffer);
+			MessageType messageType();
+			const std::map<OptionType,std::vector<uint8_t>>& options();
 
 	};
 } // namespace bric::Networking::DHCP

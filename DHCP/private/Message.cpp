@@ -16,12 +16,18 @@ class OptionIterator {
 
         OptionIterator& operator++() {
             Option* current = reinterpret_cast<Option*>(this->current);
-            if (current->type == OptionType::pad)
+            switch (current->type)
+            {
+            case OptionType::pad:
                 this->current++;
-            else if (current->type == OptionType::end)
+                break;
+            case OptionType::end:
                 this->current = nullptr;
-            else
+                break;
+            default:
                 this->current += sizeof(Option) + current->length;
+                break;
+            }
             return *this;
         }
 
@@ -63,6 +69,18 @@ Message::Message(const Buffer& buffer):Message()
     this->loadData(buffer);
 }
 
+Message::Message(const Message& msg) :Message()
+{
+    this->d = new Data;
+    d->msg = msg.d->msg;
+    d->msgType = msg.d->msgType;
+    d->option = msg.d->option;
+}
+
+Message::Message(Message&& msg) noexcept:d(msg.d){
+    msg.d = nullptr;
+}
+
 Message::~Message()
 {
     delete d;
@@ -89,6 +107,8 @@ void Message::loadData(const uint8_t* data,size_t len)
 
     if (d->msg->magicCookie != magicCookie)
         throw Exception::ProtocolAnalysisError("DHCP - invalid message (initial check failed : magic_cookie)");
+    
+    d->option[OptionType::clientIdentifier] = std::vector<uint8_t>(d->msg->chaddr,d->msg->chaddr + sizeof(d->msg->chaddr));
 
     for(Option& i:Options(d->msg->options,d->OptionDataSize()))
     {
@@ -108,6 +128,16 @@ void Message::loadData(const uint8_t* data,size_t len)
 void Message::loadData(const Buffer& buffer) 
 {
     this->loadData(buffer.data,buffer.size);
+}
+
+const std::map<OptionType,std::vector<uint8_t>>& Message::options()
+{
+    return d->option;
+}
+
+MessageType Message::messageType()
+{
+    return d->msgType;
 }
 
 size_t MessageData::OptionDataSize()
