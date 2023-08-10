@@ -4,13 +4,14 @@
 
 #include <vector>
 #include <map>
+#include <boost/asio.hpp>
 
-#include "../Buffer.h"
 
 namespace bric::Networking::DHCP {
 	class MessageData;
 
 	static uint32_t magicCookie = 0x63538263;
+	using streambuf = boost::asio::streambuf;
 
 	enum class opType : uint8_t {
 		Request = 1,
@@ -73,24 +74,17 @@ namespace bric::Networking::DHCP {
 		uint32_t magicCookie;
 	};
 
-	class Message {
+	class Message :public streambuf
+	{
 	    private:
-			typedef MessageData Data;
-			Data* d;
+			MessageType msgType;
+			std::map<OptionType,std::vector<uint8_t>> option;
 
 	    public:
 	        Message() noexcept;
-	        Message(const uint8_t* data,size_t datalen);
-			Message(const Buffer& buffer);
-			Message(const Message&);
-			Message(Message&&);
 
-			~Message();
+			void analysis();
 
-			operator bool();
-
-			void loadData(const uint8_t* data,size_t datalen);
-			void loadData(const Buffer& buffer);
 			MessageType messageType();
 			const std::map<OptionType,std::vector<uint8_t>>& options();
 

@@ -1,10 +1,9 @@
-#include "../Session.h"
-#include "../../Exception/ProtocolAnalysisError.h"
-#include "../../Exception/MessageTypeError.h"
+#include "../Exception/ProtocolAnalysisError.h"
+#include "../Exception/MessageTypeError.h"
 #include "Message.h"
+#include "Session.h"
 
 using namespace bric::Networking::DHCP;
-
 
 Session::Session(const char* hostAddr,const char* dnsAddr,const char* gatewayAddr,const char* minAddr,const char* maxAddr)
     :hostAddr(ip::make_address(hostAddr)),
@@ -31,8 +30,8 @@ void Session::exec_listen()
     while (true)
     {
         protocol::endpoint remote;
-        size_t length = listener.receive_from(asio::buffer(buffer.data(),65536),remote);
-        Message msg(buffer.data(),length);
+        Message msg;
+        size_t length = listener.receive_from(msg,remote);
 
         if (msg.options().count(OptionType::hostName)){
             std::string msghostName(reinterpret_cast<const char*>(msg.options().at(OptionType::hostName).data()));

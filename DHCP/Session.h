@@ -8,6 +8,7 @@ namespace bric::Networking::DHCP
     namespace asio = boost::asio;
     namespace ip = asio::ip;
     using protocol = ip::udp;
+
     class Session : public asio::io_context
     {
     private:
