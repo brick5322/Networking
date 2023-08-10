@@ -87,9 +87,11 @@ namespace bric::Networking::DHCP {
 	    public:
 	        Message() noexcept;
 
+			uint8_t* operator[](OptionType);
+
 			void analysis();
 
-			MessageTyp messageType();
+			MessageType messageType();
 			const std::map<OptionType, basic_vector>& options();
 
 	};

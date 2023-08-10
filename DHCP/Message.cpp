@@ -1,5 +1,5 @@
 #include "Message.h"
-#include "../Exception/ProtocolAnalysisError.h"
+#include "Exception.h"
 
 
 using namespace bric::Networking::DHCP;
@@ -70,8 +70,15 @@ class Options
         }
 };
 
-
 Message::Message() noexcept:msgType(MessageType::unknown) {}
+
+uint8_t* Message::operator[](OptionType type)
+{
+    if (option.count(type))
+        return option[type].data();
+    else
+        throw Exception::OptionNotFoundError("cannot find option");
+}
 
 void Message::analysis()
 {
