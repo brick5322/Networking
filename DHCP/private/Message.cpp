@@ -1,21 +1,27 @@
+#include <string>
 #include "MessageData.h"
 #include "../Message.h"
+#include "../ServerMessage.h"
+
 #include "../../Exception/ProtocolAnalysisError.h"
+#include "../../Exception/OptionNotFoundError.h"
 
 
 using namespace bric::Networking::DHCP;
+using namespace boost::asio;
+
 namespace Exception = bric::Networking::Exception;
 
 class OptionIterator {
     private:
-        uint8_t* optionStart;
-        uint8_t* current;
+        const uint8_t* optionStart;
+        const uint8_t* current;
     public:
-        OptionIterator(uint8_t* start,uint8_t* current) 
+        OptionIterator(const uint8_t* start,const uint8_t* current) 
             :optionStart(start),current(current){}
 
         OptionIterator& operator++() {
-            Option* current = reinterpret_cast<Option*>(this->current);
+            const Option* current = reinterpret_cast<const Option*>(this->current);
             switch (current->type)
             {
             case OptionType::pad:
@@ -35,17 +41,17 @@ class OptionIterator {
             return current == val.current;
         }
 
-        Option& operator*(){
-            return *reinterpret_cast<Option*>(this->current);
+        const Option& operator*(){
+            return *reinterpret_cast<const Option*>(this->current);
         } 
 };
 
 class Options {
     private:
-        uint8_t* option;
+        const uint8_t* option;
         size_t length;
     public:
-        Options(uint8_t* option, size_t length):option(option),length(length) {}
+        Options(const uint8_t* option, size_t length):option(option),length(length) {}
 
         inline OptionIterator begin() {
             return OptionIterator(option,option);
@@ -64,7 +70,7 @@ Message::Message(const uint8_t* data,size_t len):Message()
     this->loadData(data,len);
 }
 
-Message::Message(const Buffer& buffer):Message()
+Message::Message(const_buffer& buffer):Message()
 {
     this->loadData(buffer);
 }
@@ -77,7 +83,8 @@ Message::Message(const Message& msg) :Message()
     d->option = msg.d->option;
 }
 
-Message::Message(Message&& msg) noexcept:d(msg.d){
+Message::Message(Message&& msg) noexcept:d(msg.d)
+{
     msg.d = nullptr;
 }
 
@@ -89,6 +96,19 @@ Message::~Message()
 Message::operator bool()
 {
     return d;
+}
+
+const uint8_t* Message::operator[](OptionType type) 
+{
+    if(d->option.count(type))
+        return d->option[type].data();
+    else
+        throw Exception::OptionNotFoundError("cannot found messageType:" + std::to_string((uint32_t)type));
+}
+
+const Header* Message::operator->()
+{
+    return d->msg;
 }
 
 void Message::loadData(const uint8_t* data,size_t len)
@@ -110,7 +130,7 @@ void Message::loadData(const uint8_t* data,size_t len)
     
     d->option[OptionType::clientIdentifier] = std::vector<uint8_t>(d->msg->chaddr,d->msg->chaddr + sizeof(d->msg->chaddr));
 
-    for(Option& i:Options(d->msg->options,d->OptionDataSize()))
+    for(const Option& i:Options(d->msg->options,d->OptionDataSize()))
     {
         if(i.type == OptionType::dhcpMessageType)
             d->msgType = *(MessageType*)i.data;
@@ -125,15 +145,11 @@ void Message::loadData(const uint8_t* data,size_t len)
         throw Exception::ProtocolAnalysisError("DHCP - unknown host name");
 }
 
-void Message::loadData(const Buffer& buffer) 
+void Message::loadData(const_buffer& buffer) 
 {
-    this->loadData(buffer.data,buffer.size);
+    this->loadData((uint8_t*)buffer.data(),buffer.size());
 }
 
-const std::map<OptionType,std::vector<uint8_t>>& Message::options()
-{
-    return d->option;
-}
 
 MessageType Message::messageType()
 {

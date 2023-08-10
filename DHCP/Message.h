@@ -4,20 +4,22 @@
 
 #include <vector>
 #include <map>
+#include <boost/asio.hpp>
 
-#include "../Buffer.h"
 
 namespace bric::Networking::DHCP {
 	class MessageData;
 
 	static uint32_t magicCookie = 0x63538263;
 
-	enum class opType : uint8_t {
+	enum class opType : uint8_t 
+	{
 		Request = 1,
 		Reply = 2
 	};
 
-	enum class MessageType : uint8_t {
+	enum class MessageType : uint8_t 
+	{
 		unknown = 0,
 		discover = 1,
 		offer = 2,
@@ -29,7 +31,8 @@ namespace bric::Networking::DHCP {
 		inform = 8,
 	};
 
-	enum class OptionType : uint8_t {
+	enum class OptionType : uint8_t 
+	{
 		pad = 0,
 		subnetMask = 1,
 		gateway = 3,
@@ -55,7 +58,8 @@ namespace bric::Networking::DHCP {
 		end = 255,
 	};
 
-	struct Header {
+	struct Header 
+	{
 		opType op;
 		uint8_t htype;
 		uint8_t hlen;
@@ -73,26 +77,28 @@ namespace bric::Networking::DHCP {
 		uint32_t magicCookie;
 	};
 
-	class Message {
-	    private:
-			typedef MessageData Data;
+	class Message
+	{
+		using Data = MessageData;
+	    protected:
 			Data* d;
 
 	    public:
 	        Message() noexcept;
 	        Message(const uint8_t* data,size_t datalen);
-			Message(const Buffer& buffer);
+			Message(boost::asio::const_buffer& buffer);
 			Message(const Message&);
 			Message(Message&&);
 
 			~Message();
 
 			operator bool();
+			const uint8_t* operator[](OptionType type);
+			const Header* operator->();
 
 			void loadData(const uint8_t* data,size_t datalen);
-			void loadData(const Buffer& buffer);
+			void loadData(boost::asio::const_buffer& buffer);
 			MessageType messageType();
-			const std::map<OptionType,std::vector<uint8_t>>& options();
 
 	};
 } // namespace bric::Networking::DHCP

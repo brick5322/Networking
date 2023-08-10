@@ -1,6 +1,5 @@
 #include "../Session.h"
-#include "../../Exception/ProtocolAnalysisError.h"
-#include "../../Exception/MessageTypeError.h"
+#include "../Exception.h"
 #include "Message.h"
 
 using namespace bric::Networking::DHCP;
@@ -34,11 +33,10 @@ void Session::exec_listen()
         size_t length = listener.receive_from(asio::buffer(buffer.data(),65536),remote);
         Message msg(buffer.data(),length);
 
-        if (msg.options().count(OptionType::hostName)){
-            std::string msghostName(reinterpret_cast<const char*>(msg.options().at(OptionType::hostName).data()));
-            if(msghostName == this->hostName)
+        try {
+            if (this->hostName == (const char*)msg[OptionType::hostName])
                 continue;
-        }
+        } catch (Exception::OptionNotFoundError e) {}
 
         switch (msg.messageType())
         {

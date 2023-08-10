@@ -17,7 +17,6 @@ namespace bric::Networking::DHCP
        ip::address minAddr;
        ip::address maxAddr;
        std::string hostName;
-
         
     public:
         static constexpr ip::port_type serverPort = 67;
