@@ -11,7 +11,7 @@ namespace bric::Networking::DHCP {
 	class MessageData;
 
 	static uint32_t magicCookie = 0x63538263;
-	using streambuf = boost::asio::streambuf;
+	using basic_vector = std::vector<uint8_t>;
 
 	enum class opType : uint8_t {
 		Request = 1,
@@ -74,11 +74,11 @@ namespace bric::Networking::DHCP {
 		uint32_t magicCookie;
 	};
 
-	class Message :public streambuf
+	class Message :public basic_vector
 	{
 	    private:
 			MessageType msgType;
-			std::map<OptionType,std::vector<uint8_t>> option;
+			std::map<OptionType, basic_vector> option;
 
 	    public:
 	        Message() noexcept;
@@ -86,7 +86,7 @@ namespace bric::Networking::DHCP {
 			void analysis();
 
 			MessageType messageType();
-			const std::map<OptionType,std::vector<uint8_t>>& options();
+			const std::map<OptionType, basic_vector>& options();
 
 	};
 } // namespace bric::Networking::DHCP

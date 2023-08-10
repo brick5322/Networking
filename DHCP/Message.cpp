@@ -45,7 +45,7 @@ class OptionIterator
         }
 
         bool operator!=(const OptionIterator& val) {
-            return current == val.current;
+            return current != val.current;
         }
 
         const Option& operator*(){
@@ -75,9 +75,8 @@ Message::Message() noexcept:msgType(MessageType::unknown) {}
 
 void Message::analysis()
 {
-    const_buffer buffer = this->data();
-    const msgdef * msg = reinterpret_cast<const msgdef*>(buffer.data());
-    size_t len = buffer.size();
+    const msgdef * msg = reinterpret_cast<const msgdef*>(this->data());
+    size_t len = this->size();
 
     if (sizeof(Header) > len)
         throw Exception::ProtocolAnalysisError("DHCP - too few bytes accepted");

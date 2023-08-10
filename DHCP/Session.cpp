@@ -20,18 +20,20 @@ Session::Session(const char* hostAddr,const char* dnsAddr,const char* gatewayAdd
 void Session::exec_listen()
 {
     protocol::socket listener(*this);
-    bool isBroadCast = true;
-    std::vector<uint8_t> buffer(65536);
+    char isBroadCast = true;
     listener.bind(protocol::endpoint(ip::address_v4::any(),serverPort));
 
     if(setsockopt(listener.native_handle(),SOL_SOCKET,SO_BROADCAST,&isBroadCast,sizeof(isBroadCast)))
         throw boost::system::system_error(asio::error::fd_set_failure);
-    
+    Message msg;
     while (true)
     {
         protocol::endpoint remote;
-        Message msg;
-        size_t length = listener.receive_from(msg,remote);
+
+        msg.resize(0xffff);
+        size_t length = listener.receive_from(asio::buffer(msg.data(),msg.size()), remote);
+        msg.resize(length);
+        msg.analysis();
 
         if (msg.options().count(OptionType::hostName)){
             std::string msghostName(reinterpret_cast<const char*>(msg.options().at(OptionType::hostName).data()));
