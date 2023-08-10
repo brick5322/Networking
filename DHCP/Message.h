@@ -13,12 +13,14 @@ namespace bric::Networking::DHCP {
 	static uint32_t magicCookie = 0x63538263;
 	using basic_vector = std::vector<uint8_t>;
 
-	enum class opType : uint8_t {
+	enum class opType : uint8_t 
+	{
 		Request = 1,
 		Reply = 2
 	};
 
-	enum class MessageType : uint8_t {
+	enum class MessageType : uint8_t 
+	{
 		unknown = 0,
 		discover = 1,
 		offer = 2,
@@ -30,7 +32,8 @@ namespace bric::Networking::DHCP {
 		inform = 8,
 	};
 
-	enum class OptionType : uint8_t {
+	enum class OptionType : uint8_t 
+	{
 		pad = 0,
 		subnetMask = 1,
 		gateway = 3,
@@ -56,7 +59,8 @@ namespace bric::Networking::DHCP {
 		end = 255,
 	};
 
-	struct Header {
+	struct Header 
+	{
 		opType op;
 		uint8_t htype;
 		uint8_t hlen;
@@ -85,7 +89,7 @@ namespace bric::Networking::DHCP {
 
 			void analysis();
 
-			MessageType messageType();
+			MessageTyp messageType();
 			const std::map<OptionType, basic_vector>& options();
 
 	};

@@ -1,5 +1,4 @@
-#include "../Exception/ProtocolAnalysisError.h"
-#include "../Exception/MessageTypeError.h"
+#include "Exception.h"
 #include "Message.h"
 #include "Session.h"
 
@@ -35,11 +34,10 @@ void Session::exec_listen()
         msg.resize(length);
         msg.analysis();
 
-        if (msg.options().count(OptionType::hostName)){
-            std::string msghostName(reinterpret_cast<const char*>(msg.options().at(OptionType::hostName).data()));
-            if(msghostName == this->hostName)
+        try {
+            if (this->hostName == (const char*)msg[OptionType::hostName])
                 continue;
-        }
+        } catch (Exception::OptionNotFoundError e) {}
 
         switch (msg.messageType())
         {
