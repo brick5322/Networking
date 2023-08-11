@@ -18,42 +18,38 @@ Session::Session(const char* hostAddr,const char* dnsAddr,const char* gatewayAdd
 
 void Session::exec_listen()
 {
+    Message msg;
     protocol::socket listener(*this);
     char isBroadCast = true;
+
     listener.bind(protocol::endpoint(ip::address_v4::any(),serverPort));
 
     if(setsockopt(listener.native_handle(),SOL_SOCKET,SO_BROADCAST,&isBroadCast,sizeof(isBroadCast)))
         throw boost::system::system_error(asio::error::fd_set_failure);
-    Message msg;
     while (true)
     {
-        protocol::endpoint remote;
-
-        msg.resize(0xffff);
-        size_t length = listener.receive_from(asio::buffer(msg.data(),msg.size()), remote);
-        msg.resize(length);
-        msg.analysis();
+        protocol::endpoint remote = msg.fetch_from(listener);
 
         try {
             if (this->hostName == (const char*)msg[OptionType::hostName])
                 continue;
-        } catch (Exception::OptionNotFoundError e) {}
+        } catch (Exception::OptionNotFoundError& e) {}
 
         switch (msg.messageType())
         {
-        case MessageType::discover:
+        case MessageType::Discover:
             break;
-        case MessageType::request:
+        case MessageType::Request:
             break;
-        case MessageType::decline:
+        case MessageType::Decline:
             break;
-        case MessageType::offer:
-        case MessageType::ack:
-        case MessageType::nak:
+        case MessageType::Offer:
+        case MessageType::Ack:
+        case MessageType::Nak:
             continue;
-        case MessageType::release:
+        case MessageType::Release:
             break;
-        case MessageType::inform:
+        case MessageType::Inform:
             break;
         default:
             break;

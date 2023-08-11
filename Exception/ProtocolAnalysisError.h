@@ -13,7 +13,7 @@ namespace bric::Networking::Exception
             ProtocolAnalysisError(const std::string& description)
                 :description(std::string("ProtocolAnalysisError : " + description + ".\n")) {}
 
-            const char* what()const noexcept override {
+            virtual const char* what()const noexcept override {
                 return description.c_str();
             }
     };

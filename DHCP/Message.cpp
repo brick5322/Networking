@@ -70,20 +70,22 @@ class Options
         }
 };
 
-Message::Message() noexcept:msgType(MessageType::unknown) {}
+Message::Message() noexcept:basic_vector(bufferSize), msgType(MessageType::Unknown) {}
 
 uint8_t* Message::operator[](OptionType type)
 {
-    if (option.count(type))
-        return option[type].data();
-    else
+    try {
+        return option.at(type).data();
+    } catch (std::out_of_range& e){
         throw Exception::OptionNotFoundError("cannot find option");
+    }
 }
 
-void Message::analysis()
+protocol::endpoint Message::fetch_from(protocol::socket& socket)
 {
+    protocol::endpoint remote;
     const msgdef * msg = reinterpret_cast<const msgdef*>(this->data());
-    size_t len = this->size();
+    size_t len = socket.receive_from(buffer(this->data(),this->size()), remote);
 
     if (sizeof(Header) > len)
         throw Exception::ProtocolAnalysisError("DHCP - too few bytes accepted");
@@ -104,11 +106,13 @@ void Message::analysis()
             option[i.type] = std::vector<uint8_t>(i.data,i.data + i.length);
     }
 
-    if(msgType == MessageType::unknown)
+    if(msgType == MessageType::Unknown)
         throw Exception::ProtocolAnalysisError("DHCP - invalid message (type unknown)");
 
     if(!option.count(OptionType::hostName))
         throw Exception::ProtocolAnalysisError("DHCP - unknown host name");
+
+    return remote;
 }
 
 const std::map<OptionType,std::vector<uint8_t>>& Message::options()

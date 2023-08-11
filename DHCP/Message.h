@@ -10,8 +10,11 @@
 namespace bric::Networking::DHCP {
 	class MessageData;
 
-	static uint32_t magicCookie = 0x63538263;
+	constexpr static uint32_t magicCookie = 0x63538263;
+	constexpr static uint32_t bufferSize = 0xffff;
 	using basic_vector = std::vector<uint8_t>;
+    namespace ip = boost::asio::ip;
+    using protocol = ip::udp;
 
 	enum class opType : uint8_t 
 	{
@@ -21,15 +24,15 @@ namespace bric::Networking::DHCP {
 
 	enum class MessageType : uint8_t 
 	{
-		unknown = 0,
-		discover = 1,
-		offer = 2,
-		request = 3,
-		decline = 4,
-		ack = 5,
-		nak = 6,
-		release = 7,
-		inform = 8,
+		Unknown = 0,
+		Discover = 1,
+		Offer = 2,
+		Request = 3,
+		Decline = 4,
+		Ack = 5,
+		Nak = 6,
+		Release = 7,
+		Inform = 8,
 	};
 
 	enum class OptionType : uint8_t 
@@ -89,7 +92,7 @@ namespace bric::Networking::DHCP {
 
 			uint8_t* operator[](OptionType);
 
-			void analysis();
+			protocol::endpoint fetch_from(protocol::socket& socket);
 
 			MessageType messageType();
 			const std::map<OptionType, basic_vector>& options();

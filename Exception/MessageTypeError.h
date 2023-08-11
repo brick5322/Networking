@@ -13,7 +13,7 @@ namespace bric::Networking::Exception
             MessageTypeError(const std::string& description)
                 :description(std::string("MessageTypeError : " + description + ".\n")) {}
 
-            const char* what()const noexcept override {
+            virtual const char* what()const noexcept override {
                 return description.c_str();
             }
     };
