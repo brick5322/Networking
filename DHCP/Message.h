@@ -9,12 +9,12 @@
 
 namespace bric::Networking::DHCP {
 	class MessageData;
+	namespace asio = boost::asio;
 
 	constexpr static uint32_t magicCookie = 0x63538263;
 	constexpr static uint32_t bufferSize = 0xffff;
 	using basic_vector = std::vector<uint8_t>;
-    namespace ip = boost::asio::ip;
-    using protocol = ip::udp;
+    using protocol = asio::ip::udp;
 
 	enum class opType : uint8_t 
 	{
@@ -51,7 +51,7 @@ namespace bric::Networking::DHCP {
 		netBiosOverTcpIpScope = 47,
 		requestedIpAddress = 50,
 		ipAddressLeaseTime = 51,
-		dhcpMessageType = 53,
+		messageType = 53,
 		serverIdentifier = 54,
 		parameterRequestList = 55,
 		vendorClassIdentifier = 60,
@@ -90,12 +90,20 @@ namespace bric::Networking::DHCP {
 	    public:
 	        Message() noexcept;
 
-			uint8_t* operator[](OptionType);
+			basic_vector& operator[](OptionType);
+			const basic_vector& operator[](OptionType) const;
+			Header* operator->();
 
 			protocol::endpoint fetch_from(protocol::socket& socket);
+			void push_to(protocol::socket& socket);
+
+			asio::const_buffer packMessage();
+			void cleanOptions();
+			void setOption(OptionType type,basic_vector&& vec);
+			template <typename T>
+			void setOption(OptionType type,const T& num);
 
 			MessageType messageType();
-			const std::map<OptionType, basic_vector>& options();
 
 	};
 } // namespace bric::Networking::DHCP

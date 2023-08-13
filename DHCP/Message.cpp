@@ -3,7 +3,6 @@
 
 
 using namespace bric::Networking::DHCP;
-using namespace boost::asio;
 namespace Exception = bric::Networking::Exception;
 
 struct Option 
@@ -57,9 +56,8 @@ class Options
 {
     private:
         const uint8_t* option;
-        size_t length;
     public:
-        Options(const uint8_t* option, size_t length):option(option),length(length) {}
+        Options(const uint8_t* option):option(option) {}
 
         inline OptionIterator begin() {
             return OptionIterator(option,option);
@@ -72,20 +70,40 @@ class Options
 
 Message::Message() noexcept:basic_vector(bufferSize), msgType(MessageType::Unknown) {}
 
-uint8_t* Message::operator[](OptionType type)
+const basic_vector& Message::operator[](OptionType type) const
 {
-    try {
-        return option.at(type).data();
-    } catch (std::out_of_range& e){
+    try 
+    {
+        return option.at(type);
+    }
+    catch (std::out_of_range& e)
+    {
         throw Exception::OptionNotFoundError("cannot find option");
     }
+}
+
+basic_vector& Message::operator[](OptionType type)
+{
+    try 
+    {
+        return option.at(type);
+    }
+    catch (std::out_of_range& e)
+    {
+        throw Exception::OptionNotFoundError("cannot find option");
+    }
+}
+
+Header* Message::operator->()
+{
+    return reinterpret_cast<Header*>(this->data());
 }
 
 protocol::endpoint Message::fetch_from(protocol::socket& socket)
 {
     protocol::endpoint remote;
     const msgdef * msg = reinterpret_cast<const msgdef*>(this->data());
-    size_t len = socket.receive_from(buffer(this->data(),this->size()), remote);
+    size_t len = socket.receive_from(asio::buffer(this->data(),this->size()), remote);
 
     if (sizeof(Header) > len)
         throw Exception::ProtocolAnalysisError("DHCP - too few bytes accepted");
@@ -98,9 +116,9 @@ protocol::endpoint Message::fetch_from(protocol::socket& socket)
     
     option[OptionType::clientIdentifier] = std::vector<uint8_t>(msg->chaddr,msg->chaddr + sizeof(msg->chaddr));
 
-    for(const Option& i:Options(msg->options,len - sizeof(Header)))
+    for(const Option& i:Options(msg->options))
     {
-        if(i.type == OptionType::dhcpMessageType)
+        if(i.type == OptionType::messageType)
             msgType = *(const MessageType*)i.data;
         else
             option[i.type] = std::vector<uint8_t>(i.data,i.data + i.length);
@@ -115,12 +133,54 @@ protocol::endpoint Message::fetch_from(protocol::socket& socket)
     return remote;
 }
 
-const std::map<OptionType,std::vector<uint8_t>>& Message::options()
+void Message::push_to(protocol::socket& socket){
+    asio::const_buffer buffer = this->packMessage();
+    socket.send(buffer);
+}
+
+asio::const_buffer Message::packMessage()
 {
-    return option;
+    msgdef *msg = reinterpret_cast<msgdef*>(this->data());
+    uint8_t* cur_pos = msg->options;
+    for (auto& pair : this->option)
+    {
+        Option *cur_field = reinterpret_cast<Option*>(cur_pos);
+        size_t size = pair.second.size();
+        cur_field->type = pair.first;
+        cur_field->length = size;
+        memcpy(cur_field->data,pair.second.data(),size);
+        cur_pos += sizeof(Option) + size;
+    }
+    *cur_pos = (uint8_t)OptionType::end;
+
+    return asio::const_buffer(
+                    this->data(),
+                    sizeof(Header) + (cur_pos - msg->options + 1));
+}
+
+void Message::cleanOptions()
+{
+    option.clear();
 }
 
 MessageType Message::messageType()
 {
     return msgType;
+}
+
+
+void Message::setOption(OptionType type,basic_vector&& vec)
+{
+    option[type] = vec;
+}
+
+template <typename T>
+void Message::setOption(OptionType type,const T& num)
+{
+    using tmpType = struct 
+    {
+        uint8_t byte[sizeof(T)/sizeof(uint8_t)];
+    };
+    const tmpType& tmp = reinterpret_cast<const tmpType&>(num);
+    option[type] = basic_vector(&tmp.byte,&tmp.byte + sizeof(T)/sizeof(uint8_t));
 }
