@@ -11,7 +11,7 @@ size_t Session::addressIndex(asio::ip::address addr)
     uint32_t min_addr = minAddr.to_v4().to_uint();
     uint32_t max_addr = maxAddr.to_v4().to_uint();
 
-    if(cur_addr < max_addr || cur_addr > max_addr)
+    if(cur_addr < min_addr || cur_addr > max_addr)
         throw std::overflow_error("address not in pool");
     
     return cur_addr - min_addr;
@@ -106,7 +106,7 @@ Session::Session(const char* hostAddr,
     hostName(hostName),
     leaseTime(leaseTime),
     offerKeepTime(offerKeepTime),
-    ipPool(inet_addr(maxAddr) - inet_addr(minAddr))
+    ipPool(htonl(inet_addr(maxAddr)) - htonl(inet_addr(minAddr)))
 {
 }
 
@@ -115,10 +115,8 @@ void Session::exec_listen()
     static const uint8_t* unknown_host = (uint8_t*)"unknownClientIdentifier";
     static constexpr int nb_unknown_host = sizeof("unknownClientIdentifier");
     Message request;
-    protocol::socket listener(*this);
+    protocol::socket listener(*this, protocol::endpoint(asio::ip::udp::v4(), serverPort));
     char isBroadCast = true;
-
-    listener.bind(protocol::endpoint(asio::ip::address_v4::any(),serverPort));
 
     if(setsockopt(listener.native_handle(),SOL_SOCKET,SO_BROADCAST,&isBroadCast,sizeof(isBroadCast)))
         throw boost::system::system_error(asio::error::fd_set_failure);
@@ -153,7 +151,7 @@ void Session::exec_listen()
                 continue; // next listen
             Message reply = this->setReply(request,retaddr);
             reply.setOption(OptionType::messageType,MessageType::Offer);
-            reply.push_to(listener);
+            reply.push_to(listener,remote);
             break;
         }
         case MessageType::Request:
@@ -167,7 +165,7 @@ void Session::exec_listen()
                 request_ip_info.clientIdentifier = request[OptionType::requestedIpAddress];
                 Message reply = this->setReply(request,request_ip);
                 reply.setOption(OptionType::messageType,MessageType::Ack);
-                reply.push_to(listener);
+                reply.push_to(listener,remote);
                 break;
             }
             catch(const Exception::OptionNotFoundError& e)
@@ -176,7 +174,7 @@ void Session::exec_listen()
                 reply.cleanOptions();
                 reply.setOption(OptionType::messageType,MessageType::Nak);
                 reply.setOption(OptionType::serverIdentifier,htonl(hostAddr.to_v4().to_uint()));
-                reply.push_to(listener);
+                reply.push_to(listener,remote);
                 break;
             }
             

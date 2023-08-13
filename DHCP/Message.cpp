@@ -76,7 +76,7 @@ const basic_vector& Message::operator[](OptionType type) const
     {
         return option.at(type);
     }
-    catch (std::out_of_range& e)
+    catch (std::out_of_range&)
     {
         throw Exception::OptionNotFoundError("cannot find option");
     }
@@ -88,7 +88,7 @@ basic_vector& Message::operator[](OptionType type)
     {
         return option.at(type);
     }
-    catch (std::out_of_range& e)
+    catch (std::out_of_range&)
     {
         throw Exception::OptionNotFoundError("cannot find option");
     }
@@ -104,7 +104,7 @@ protocol::endpoint Message::fetch_from(protocol::socket& socket)
     protocol::endpoint remote;
     const msgdef * msg = reinterpret_cast<const msgdef*>(this->data());
     size_t len = socket.receive_from(asio::buffer(this->data(),this->size()), remote);
-
+    
     if (sizeof(Header) > len)
         throw Exception::ProtocolAnalysisError("DHCP - too few bytes accepted");
     
@@ -127,15 +127,15 @@ protocol::endpoint Message::fetch_from(protocol::socket& socket)
     if(msgType == MessageType::Unknown)
         throw Exception::ProtocolAnalysisError("DHCP - invalid message (type unknown)");
 
-    if(!option.count(OptionType::hostName))
-        throw Exception::ProtocolAnalysisError("DHCP - unknown host name");
-
     return remote;
 }
 
-void Message::push_to(protocol::socket& socket){
+void Message::push_to(protocol::socket& socket,const protocol::endpoint& destination){
     asio::const_buffer buffer = this->packMessage();
-    socket.send(buffer);
+    protocol::endpoint dest = destination;
+    if (dest.address() == asio::ip::address_v4::any())
+        dest = protocol::endpoint(asio::ip::make_address("255.255.255.255"), 68);
+    socket.send_to(buffer, dest);
 }
 
 asio::const_buffer Message::packMessage()
