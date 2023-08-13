@@ -173,14 +173,3 @@ void Message::setOption(OptionType type,basic_vector&& vec)
 {
     option[type] = vec;
 }
-
-template <typename T>
-void Message::setOption(OptionType type,const T& num)
-{
-    using tmpType = struct 
-    {
-        uint8_t byte[sizeof(T)/sizeof(uint8_t)];
-    };
-    const tmpType& tmp = reinterpret_cast<const tmpType&>(num);
-    option[type] = basic_vector(&tmp.byte,&tmp.byte + sizeof(T)/sizeof(uint8_t));
-}

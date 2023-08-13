@@ -30,7 +30,7 @@ namespace bric::Networking::DHCP
        std::chrono::seconds leaseTime;
        std::chrono::seconds offerKeepTime;
 
-       IPInfo& infoAt(asio::ip::address addr);
+       size_t addressIndex(asio::ip::address addr);
        asio::ip::address getAddressAt(int index);
        bool addressAvaliable(uint32_t index);
 
@@ -50,6 +50,5 @@ namespace bric::Networking::DHCP
                 std::chrono::seconds leaseTime = std::chrono::seconds(7200),
                 std::chrono::seconds offerKeepTime = std::chrono::seconds(60));
         void exec_listen();
-        ~Session();
     };
 } // namespace bric::Networking::DHCP

@@ -3,8 +3,9 @@
 #include "Session.h"
 
 using namespace bric::Networking::DHCP;
+using sys_clock = std::chrono::system_clock;
 
-IPInfo& Session::infoAt(asio::ip::address addr)
+size_t Session::addressIndex(asio::ip::address addr)
 {
     uint32_t cur_addr = addr.to_v4().to_uint();
     uint32_t min_addr = minAddr.to_v4().to_uint();
@@ -13,7 +14,7 @@ IPInfo& Session::infoAt(asio::ip::address addr)
     if(cur_addr < max_addr || cur_addr > max_addr)
         throw std::overflow_error("address not in pool");
     
-    return ipPool[cur_addr - min_addr];
+    return cur_addr - min_addr;
 }
 
 asio::ip::address Session::getAddressAt(int index)
@@ -38,7 +39,7 @@ bool Session::addressAvaliable(uint32_t pos)
     IPInfo& info = this->ipPool[pos];
 
     // 初始值为1970-1-1 < now
-    if (info.releaseTime < std::chrono::system_clock::now())
+    if (info.releaseTime < sys_clock::now())
     /**
      * @todo 尝试发送icmp (Optional:可以等客户端decline)
     */
@@ -107,13 +108,12 @@ Session::Session(const char* hostAddr,
     offerKeepTime(offerKeepTime),
     ipPool(inet_addr(maxAddr) - inet_addr(minAddr))
 {
-    protocol::resolver rsv(*this);
-    for (auto& result: rsv.resolve(protocol::endpoint(this->hostAddr,0)))
-        this->hostName = result.host_name();
 }
 
 void Session::exec_listen()
 {
+    static const uint8_t* unknown_host = (uint8_t*)"unknownClientIdentifier";
+    static constexpr int nb_unknown_host = sizeof("unknownClientIdentifier");
     Message request;
     protocol::socket listener(*this);
     char isBroadCast = true;
@@ -160,9 +160,12 @@ void Session::exec_listen()
         {
             try
             {
-                asio::ip::address_v4 requestIP(*reinterpret_cast<uint32_t*>(request[OptionType::requestedIpAddress].data()));
-                this->infoAt(requestIP).releaseTime = std::chrono::system_clock::now() + this->leaseTime;
-                Message reply = this->setReply(request,requestIP);
+                uint32_t tmp = *reinterpret_cast<uint32_t*>(request[OptionType::requestedIpAddress].data());
+                asio::ip::address_v4 request_ip(ntohl(tmp));
+                IPInfo& request_ip_info = ipPool[this->addressIndex(request_ip)];
+                request_ip_info.releaseTime = sys_clock::now() + this->leaseTime;
+                request_ip_info.clientIdentifier = request[OptionType::requestedIpAddress];
+                Message reply = this->setReply(request,request_ip);
                 reply.setOption(OptionType::messageType,MessageType::Ack);
                 reply.push_to(listener);
                 break;
@@ -180,9 +183,15 @@ void Session::exec_listen()
         }
         case MessageType::Decline:
         {
-            /**
-             * @todo 设置ip为占用状态
-            */
+            try
+            {
+                uint32_t tmp = *reinterpret_cast<uint32_t*>(request[OptionType::requestedIpAddress].data());
+                asio::ip::address_v4 decline_ip(ntohl(tmp));
+                IPInfo& decline_ip_info = ipPool[this->addressIndex(decline_ip)];
+                decline_ip_info.releaseTime = sys_clock::now();
+                decline_ip_info.clientIdentifier = basic_vector(unknown_host,unknown_host + nb_unknown_host);
+            }
+            catch(const std::exception& e) {}
             break;
         }
         case MessageType::Offer:
@@ -190,6 +199,7 @@ void Session::exec_listen()
         case MessageType::Nak:
             continue;
         case MessageType::Release:
+            ipPool[this->addressIndex(remote.address())] = IPInfo();
             break;
         case MessageType::Inform:
             break;
