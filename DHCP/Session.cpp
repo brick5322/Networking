@@ -186,10 +186,10 @@ void Session::exec_listen()
                 uint32_t tmp = *reinterpret_cast<uint32_t*>(request[OptionType::requestedIpAddress].data());
                 asio::ip::address_v4 decline_ip(ntohl(tmp));
                 IPInfo& decline_ip_info = ipPool[this->addressIndex(decline_ip)];
-                decline_ip_info.releaseTime = sys_clock::now();
+                decline_ip_info.releaseTime = sys_clock::now() + leaseTime;
                 decline_ip_info.clientIdentifier = basic_vector(unknown_host,unknown_host + nb_unknown_host);
             }
-            catch(const std::exception& e) {}
+            catch(std::exception& e) {}
             break;
         }
         case MessageType::Offer:
@@ -197,7 +197,11 @@ void Session::exec_listen()
         case MessageType::Nak:
             continue;
         case MessageType::Release:
-            ipPool[this->addressIndex(remote.address())] = IPInfo();
+            try
+            {
+                ipPool[this->addressIndex(remote.address())] = IPInfo();
+            }
+            catch(std::overflow_error& e) {}
             break;
         case MessageType::Inform:
             break;
